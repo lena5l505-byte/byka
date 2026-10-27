@@ -3,9 +3,6 @@ pipeline {
     options {
         timestamps()
     }
-    environment {
-        SCANNER_HOME = tool 'sonar-scanner'
-    }
     stages {
         stage('Checkout') {
             steps {
@@ -32,7 +29,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonarqube') {
-                    sh "${SCANNER_HOME}/bin/sonar-scanner"
+                    sh 'sonar-scanner'
                 }
             }
         }

@@ -1,40 +1,30 @@
 import hashlib
-import pickle
-import random
+import json
+import os
+import re
+import secrets
 import sqlite3
 import subprocess
-
 import requests
 import yaml
-
-DB_PASSWORD = "SuperSecret123!" # пароль в коде
-
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
 def get_user(username):
     conn = sqlite3.connect("app.db")
-    # SQL-инъекция
-    query = f"SELECT * FROM users WHERE name = '{username}'"
-    return conn.execute(query).fetchall()
+    return conn.execute("SELECT * FROM users WHERE name = ?", (username,)).fetchall()
 
 def ping(host):
-    # командная инъекция
-    return subprocess.run("ping -c 1 " + host, shell=True)
-
-def hash_password(password):
-    # слабый хеш
-    return hashlib.md5(password.encode()).hexdigest()
-
+    if not re.match(r"^[a-zA-Z0-9.-]+$", host):
+        raise ValueError("Invalid host format")
+    return subprocess.run(["ping", "-c", "1", host], check=False)
+def hash_password(password, salt=None):
+    salt = salt or os.urandom(16)
+    digest = hashlib.scrypt(password.encode(), salt=salt, n=2**14, r=8, p=1)
+    return salt, digest
 def make_reset_token():
-    # предсказуемый токен
-    return str(random.random())
-
+    return secrets.token_urlsafe(32)
 def load_config(text):
-    # небезопасная загрузка YAML
-    return yaml.load(text, Loader=yaml.Loader)
-
+    return yaml.safe_load(text)
 def load_session(data):
-    # небезопасная десериализация
-    return pickle.loads(data)
-
+    return json.loads(data)
 def fetch(url):
-    # отключена проверка TLS
-    return requests.get(url, verify=False)
+    return requests.get(url, timeout=10)
